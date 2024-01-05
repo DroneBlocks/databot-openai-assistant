@@ -49,6 +49,7 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         assistant_instructions = self.get_assistant_instructions()
         if instructions is None:
             instructions = assistant_instructions
+
         self.add_function(self._get_function_definition())
 
         super().create_assistant(name, instructions, tools, model, include_files)
@@ -65,7 +66,11 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         Databot Sensor Dictionary: 
         {json.dumps(list(values))} 
 
-        The 'friendly_name' is what humans will call the sensor value.  The 'data_columns' will be the list of values associated with the sensor name.  All 'data_columns' associated with a sensor will need to be returned in the response.  
+        The 'friendly_name' is what humans will call the sensor value. 
+        
+        The 'data_columns' will be the list of values associated with the sensor name.  
+        
+        All 'data_columns' associated with a sensor will need to be returned in the response.  
 
         The 'sensor_name' is the name of the sensor known by the databot.  
 
@@ -109,7 +114,7 @@ class ChatMessage:
 def show_chat_history():
     for chat in st.session_state.chat_history:
         with st.chat_message(chat.get_role()):
-            st.write(chat)
+            st.markdown(chat)
 
 def get_databot_values(sensor_names: List) -> str:
     try:
@@ -166,15 +171,18 @@ def files_in_directory(directory_path):
 
 def setup_sidebar():
     with st.sidebar:
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3 = st.columns(3)
         with c1:
             upload_files_btn = st.button(label="Upload Files")
         with c2:
             delete_files_btn = st.button(label="Delete Files")
+        # with c3:
+        #     show_assistant_files = st.button(label="Show Assistant Files")
+        # with c4:
+        #     debug_btn = st.button(label="Debug")
+
         with c3:
-            show_assistant_files = st.button(label="Show Assistant Files")
-        with c4:
-            debug_btn = st.button(label="Debug")
+            delete_assistant_btn = st.button(label="Delete Assistant")
 
         if upload_files_btn:
             st.write("Uploading")
@@ -198,19 +206,22 @@ def setup_sidebar():
                 if len(files) > 0:
                     st.warning("Some files were not deleted")
 
-        if show_assistant_files:
-            files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
-            for file in files:
-                st.write(f"{file.file_path} [{file.file_id}]")
+        # if show_assistant_files:
+        #     files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
+        #     for file in files:
+        #         st.write(f"{file.file_path} [{file.file_id}]")
+        #
+        # if debug_btn:
+        #     local_files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
+        #     openai_files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=True)
+        #     for file in local_files:
+        #         st.write(f"{file.file_path} [{file.file_id}]")
+        #
+        #     for file in openai_files:
+        #         st.write(f"{file.file_path} [{file.file_id}]")
 
-        if debug_btn:
-            local_files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
-            openai_files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=True)
-            for file in local_files:
-                st.write(f"{file.file_path} [{file.file_id}]")
-
-            for file in openai_files:
-                st.write(f"{file.file_path} [{file.file_id}]")
+        if delete_assistant_btn:
+            st.session_state.openai_assistant.delete_assistant()
 
 def handle_userinput(user_content: str):
     """
@@ -277,7 +288,7 @@ if __name__ == '__main__':
     if "openai_assistant" not in st.session_state:
         assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
         assistant.create_assistant(name="Databot Assistant", model="gpt-3.5-turbo-1106",
-                                    tools=['function'],
+                                    tools=['function', 'retrieval', 'code_interpreter'],
                                    instructions="You help answer questions about the databot sensor device and can call function to retrieve values from the databot."
                 )
         st.session_state["openai_assistant"] = assistant

@@ -72,7 +72,10 @@ class AssistantThreadMessage:
 
     def __str__(self):
         if self.get_type() == "text":
-            return self.thread_message.content[0].text.value
+            # msg = f"""{self.thread_message.content[0].text.value}
+            # {self.get_message_annotations()}"""
+            msg = self.thread_message.content[0].text.value
+            return msg
         elif self.get_type() == "image_file":
             return f"FileID: {self.thread_message.content[0].image_file.file_id}\n{self.thread_message.content[1].text.value}"
         else:
@@ -81,7 +84,7 @@ class AssistantThreadMessage:
 
 @dataclass
 class ChatMessage:
-    role: str  # one of "user", "assistant"
+    role: str # one of "user", "assistant"
     # if role=user, then content is string
     # if role=assistant, then content is AssistantThreadMessage
     content: AssistantThreadMessage | str
@@ -106,6 +109,7 @@ class OpenAIAssistant:
         self.run = None
         self.files: List[AssistantFile] = []
         self.functions: List[FunctionDefinition] = []
+        self.message_history: List[AssistantThreadMessage] = []
 
     def get_assistant_instructions(self) -> str:
         return "If documents are associated with this assistant, use the documents to help answer the question."
@@ -195,6 +199,10 @@ class OpenAIAssistant:
             file_path=file_path,
             file_object=file
         ))
+
+        if self.assistant is not None:
+            self.openai_client.beta.assistants.files.create(assistant_id=self.assistant.id, file_id=file.id)
+
         return file.id
 
     def get_assistant_files(self, refresh_from_openai: bool = False) -> List[AssistantFile]:
@@ -220,7 +228,7 @@ class OpenAIAssistant:
 
         return self.files
 
-    def create_assistant(self, name: str, instructions: str | None = None,
+    def create_assistant(self, name: str, instructions: str| None=None,
                          tools: List[Literal["retrieval", "code_interpreter", "function"]] = ["retrieval"],
                          model: Literal[
                              "gpt-3.5-turbo-1106", "gpt-4-1106-preview"] = "gpt-3.5-turbo-1106",
@@ -246,8 +254,9 @@ class OpenAIAssistant:
         # if no instructions are given, supply the default instruction
         if instructions is None:
             instructions = self.get_assistant_instructions()
-            if include_files:
+            if include_files and len(file_ids) > 0:
                 instructions = instructions + f"\n Use files with ids: {','.join(file_ids)} associated with this assistant when answering a question."
+
 
         self.assistant = self.openai_client.beta.assistants.create(
             name=name,
@@ -281,7 +290,7 @@ class OpenAIAssistant:
         )
         return message
 
-    def submit_user_prompt(self, user_prompt: str, instructions: str = "") -> Run:
+    def submit_user_prompt(self, user_prompt: str, instructions: str = "", wait_for_completion: bool = False) -> Run:
         # hard code include files to false
         # Todo should figure out a way to allow the user to select which documents to use for a specific
         # request.
@@ -292,6 +301,10 @@ class OpenAIAssistant:
             assistant_id=self.assistant.id,
             instructions=instructions
         )
+
+        if wait_for_completion:
+            self.poll_for_assistant_conversation()
+
         return self.run
 
     def get_run(self) -> Run:
@@ -327,8 +340,18 @@ class OpenAIAssistant:
             if response == "requires_action":
                 tool_outputs = []
                 tool_calls = the_run.required_action.submit_tool_outputs.tool_calls
+
                 for tool_call in tool_calls:
-                    tool_output = self.handle_requires_action(tool_call)
+                    function_name = tool_call.function.name
+                    function_args = tool_call.function.arguments
+
+                    function_output = self.handle_requires_action(tool_call, function_name, function_args)
+
+                    tool_output = {
+                        "tool_call_id": tool_call.id,
+                        "output": function_output
+                    }
+
                     tool_outputs.append(tool_output)
                 self.openai_client.beta.threads.runs.submit_tool_outputs(thread_id=self.thread.id,
                                                                          run_id=the_run.id, tool_outputs=tool_outputs)
@@ -342,7 +365,6 @@ class OpenAIAssistant:
             if max_timeout == 0:
                 break
         self.run_response_callback(the_run=the_run)
-        print(response)
 
         if max_timeout == 0:
             return ["Timeout occurred. Please try again"]
@@ -351,9 +373,10 @@ class OpenAIAssistant:
             messages = []
             for message in conversation:
                 messages.append(message)
+            self.message_history = messages
             return messages
 
-    def handle_requires_action(self, tool_call) -> dict:
+    def handle_requires_action(self, tool_call, function_name: str, function_args: str) -> str:
         raise NotImplementedError(
             "handle_requires_action is not implemented.  Expected to be implemented in base classes")
 

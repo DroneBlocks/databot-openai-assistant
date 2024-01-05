@@ -1,0 +1,3 @@
+The humidity sensor is a black color square chip with a debossed circle on it.
+Look for the label Humidity near the databot logo on thedatabot PCB. Note there is a hole in the case
+for air to enter over the humidity sensor.
