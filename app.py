@@ -1,6 +1,7 @@
 import json
 import logging
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Literal
 
@@ -10,7 +11,6 @@ import streamlit as st
 from databot.PyDatabot import databot_sensors
 from dotenv import load_dotenv
 from openai.types.beta.threads import Run
-from dataclasses import dataclass
 
 from openai_assistant import OpenAIAssistant, FunctionDefinition, FunctionParameter, AssistantThreadMessage
 
@@ -80,41 +80,52 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         """
         return system_content
 
-    def handle_requires_action(self, tool_call) -> dict:
+    def handle_requires_action(self, tool_call, function_name: str, function_args: str) -> str:
+        rtn_value = None
         try:
             print(tool_call)
-            print(tool_call.function.name)
-            print(tool_call.function.arguments)
-            args = json.loads(tool_call.function.arguments)
+            print(function_name)
+            print(function_args)
+            args = json.loads(function_args)
 
             output = get_databot_values(args['sensor_names'])
             print(output)
+            rtn_value = output
 
-            tool_output = {
-                "tool_call_id": tool_call.id,
-                "output": output
-            }
-        except:
-            tool_output = {
-                "tool_call_id": tool_call.id,
-                "output": "unknown"
-            }
+        except Exception as exc:
+            logging.error(exc)
+            rtn_value = "Unknown"
 
-        return tool_output
+        return rtn_value
 
     def run_response_callback(self, the_run: Run):
         super().run_response_callback(the_run)
         st.sidebar.write(the_run.status)
+
+
+def get_assistant() -> DatabotOpenAIAssistant:
+    if "openai_assistant" not in st.session_state:
+        assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
+        assistant.create_assistant(name="Databot Assistant",
+                                   tools=['function', 'retrieval', 'code_interpreter'],
+                                   instructions="You help answer questions about the databot sensor device and can call function to retrieve values from the databot."
+                                   )
+        st.session_state["openai_assistant"] = assistant
+
+    return st.session_state["openai_assistant"]
+
 
 @dataclass
 class ChatMessage:
     role: str
     content: str
 
+
 def show_chat_history():
     for chat in st.session_state.chat_history:
         with st.chat_message(chat.get_role()):
             st.markdown(chat)
+
 
 def get_databot_values(sensor_names: List) -> str:
     try:
@@ -188,40 +199,24 @@ def setup_sidebar():
             st.write("Uploading")
             # since we are uploading the entire directory - to keep things in sync
             # first delete all files that are currently in openai
-            if "openai_assistant" in st.session_state:
-                st.session_state["openai_assistant"].delete_files()
+            get_assistant().delete_files()
 
             with files_in_directory('./databot_docs') as files:
                 for file_path in files:
                     st.write(file_path)
-                    if "openai_assistant" in st.session_state:
-                        st.session_state["openai_assistant"].add_file_to_assistant(file_path)
+                    get_assistant().add_file_to_assistant(file_path=file_path)
 
         if delete_files_btn:
             st.write("Deleting files")
-            if "openai_assistant" in st.session_state:
-                st.session_state["openai_assistant"].delete_files()
+            get_assistant().delete_files()
 
-                files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
-                if len(files) > 0:
-                    st.warning("Some files were not deleted")
-
-        # if show_assistant_files:
-        #     files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
-        #     for file in files:
-        #         st.write(f"{file.file_path} [{file.file_id}]")
-        #
-        # if debug_btn:
-        #     local_files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=False)
-        #     openai_files = st.session_state["openai_assistant"].get_assistant_files(refresh_from_openai=True)
-        #     for file in local_files:
-        #         st.write(f"{file.file_path} [{file.file_id}]")
-        #
-        #     for file in openai_files:
-        #         st.write(f"{file.file_path} [{file.file_id}]")
+            files = get_assistant().get_assistant_files(refresh_from_openai=False)
+            if len(files) > 0:
+                st.warning("Some files were not deleted")
 
         if delete_assistant_btn:
-            st.session_state.openai_assistant.delete_assistant()
+            get_assistant().delete_assistant()
+
 
 def handle_userinput(user_content: str):
     """
@@ -243,8 +238,8 @@ def handle_userinput(user_content: str):
     # show_chat_history()
 
     try:
-        st.session_state.openai_assistant.submit_user_prompt(user_content)
-        messages: List[AssistantThreadMessage] = st.session_state.openai_assistant.poll_for_assistant_conversation()
+        get_assistant().submit_user_prompt(user_content, wait_for_completion=True)
+        messages: List[AssistantThreadMessage] = get_assistant().get_assistant_conversation()
         for message in messages:
             if message.get_id() not in st.session_state.chat_history_ids:
                 st.session_state.chat_history.append(message)
@@ -282,15 +277,7 @@ def main():
         handle_userinput(user_question)
 
 
-
 if __name__ == '__main__':
     load_dotenv()
-    if "openai_assistant" not in st.session_state:
-        assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
-        assistant.create_assistant(name="Databot Assistant", model="gpt-3.5-turbo-1106",
-                                    tools=['function', 'retrieval', 'code_interpreter'],
-                                   instructions="You help answer questions about the databot sensor device and can call function to retrieve values from the databot."
-                )
-        st.session_state["openai_assistant"] = assistant
 
     main()
