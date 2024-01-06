@@ -5,7 +5,7 @@ An OpenAI Assistant to 'chat' with the databot device.
 ## Setup
 
 ```shell
-pip install pip-tool
+pip install pip-tools
 pip-compile
 pip-sync
 ```
