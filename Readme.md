@@ -20,6 +20,19 @@ The contents of the file should look like:
 OPENAI_API_KEY=sk-oeVK-your-api-key-here
 ```
 
+## Jupyter Lab
+
+To get an idea of how to use the OpenAIAssistant class to interact with OpenAI, use the `OpenAIAssistantOverview` python notebook.
+
+Run: 
+
+```shell
+jupyter lab
+```
+
+Then open that notebook.
+
+
 ## Run
 
 In one terminal:
