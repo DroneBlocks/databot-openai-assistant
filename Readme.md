@@ -39,9 +39,10 @@ Ask a question of the databot.  For example
 * What is the current CO2 value from the databot?
 * What is the VOC value?
 * What does the voc sensor measure?
+* Is the co2 level safe?
 * What are the classes in the DroneBlocks databot-py python package?
 * Can you provide an example python script to save databot values to a file?
-* 
+* What sensor values are available to report on?
 Assuming you have an external temperature probe
 * what is the temp 1 value in fahrenheit
 
