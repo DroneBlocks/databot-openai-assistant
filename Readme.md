@@ -32,7 +32,7 @@ In another terminal
 python pydatabot_webserver.py
 ```
 
-In the left nav, 'Upload files'.  At the moment the only uploads a single file about the DroneBlocks databot-py Python package.
+In the left nav, select the 'Upload files' button.  At the moment the only uploads a single file about the DroneBlocks databot-py Python package.
 
 Ask a question of the databot.  For example
 
