@@ -64,7 +64,7 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         Use the following dictionary to understand how 'data columns' are associated with a sensor name.
 
         Databot Sensor Dictionary: 
-        {json.dumps(list(values))} 
+        {json.dumps(list(values), indent=2)} 
 
         The 'friendly_name' is what humans will call the sensor value. 
         
@@ -87,13 +87,18 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
             print(function_name)
             print(function_args)
             args = json.loads(function_args)
+            st.sidebar.write(f"Call function: {function_name}")
+            st.sidebar.write(f"Arguments: {function_args}")
 
             output = get_databot_values(args['sensor_names'])
+            st.sidebar.write("Document returned to OpenAI")
+            st.sidebar.json(output)
             print(output)
             rtn_value = output
 
         except Exception as exc:
             logging.error(exc)
+            st.sidebar.error(str(exc))
             rtn_value = "Unknown"
 
         return rtn_value
@@ -207,15 +212,19 @@ def setup_sidebar():
                     get_assistant().add_file_to_assistant(file_path=file_path)
 
         if delete_files_btn:
-            st.write("Deleting files")
+            st.write("Deleting files...")
             get_assistant().delete_files()
 
             files = get_assistant().get_assistant_files(refresh_from_openai=False)
             if len(files) > 0:
                 st.warning("Some files were not deleted")
+            st.write("Deleting files...Done")
+
 
         if delete_assistant_btn:
+            st.write("Deleting Assistant...")
             get_assistant().delete_assistant()
+            st.write("Deleting Assistant...Done")
 
 
 def handle_userinput(user_content: str):
