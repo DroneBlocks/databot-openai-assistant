@@ -4,11 +4,23 @@ An OpenAI Assistant to 'chat' with the databot device.
 
 ## Setup
 
-```shell
-pip install pip-tools
-pip-compile
-pip-sync
-```
+## Create Python Virtual Env
+
+Make sure you create a Python virtual environment and activiate the Python virtual Environment.
+
+## Install
+
+### Install Local Requirements
+
+Recommended steps to install locally in a terminal window
+
+Depending upon your Operating system and Python install, execute one of the following:
+* `pip install pip-tools` or `python -m pip install pip-tools`
+
+Then run:
+* `pip-compile`
+* `pip-sync`
+
 
 ## OpenAI API Key
 
