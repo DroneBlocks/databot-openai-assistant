@@ -10,12 +10,17 @@ import requests
 import streamlit as st
 from databot.PyDatabot import databot_sensors
 from dotenv import load_dotenv
+from openai.types.beta import AssistantDeleted
 from openai.types.beta.threads import Run
 
 from openai_assistant import OpenAIAssistant, FunctionDefinition, FunctionParameter, AssistantThreadMessage
 
 
 class DatabotOpenAIAssistant(OpenAIAssistant):
+
+    def delete_assistant(self) -> AssistantDeleted:
+        super().delete_files()
+        return super().delete_assistant()
 
     def _get_databot_friendly_names(self) -> List:
         df = pd.DataFrame(data=databot_sensors.values()).sort_values(by="friendly_name")
