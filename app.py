@@ -65,7 +65,10 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
     def get_assistant_instructions(self) -> str:
         values = databot_sensors.values()
         system_content = f"""
-        you are an expert on the databot sensor device.  
+        you are an expert on the databot sensor device.
+        
+        When displaying sensor values, include the appropriate units.
+  
         Use the following dictionary to understand how 'data columns' are associated with a sensor name.
 
         Databot Sensor Dictionary: 
@@ -80,6 +83,8 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         The 'sensor_name' is the name of the sensor known by the databot.  
 
         DO NOT call the function `get_databot_values` unless the user needs the current sensor value.
+                
+        If multiple sensor values are requested, create a list of sensor names and call the `get_databot_values` function once with all of the sensor names.
 
         Any temperature values will be in celsius, so convert the temperature to fahrenheit and show both values with their units.
         """
@@ -88,9 +93,6 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
     def handle_requires_action(self, tool_call, function_name: str, function_args: str) -> str:
         rtn_value = None
         try:
-            print(tool_call)
-            print(function_name)
-            print(function_args)
             args = json.loads(function_args)
             st.sidebar.write(f"Call function: {function_name}")
             st.sidebar.write(f"Arguments: {function_args}")
@@ -98,7 +100,6 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
             output = get_databot_values(args['sensor_names'])
             st.sidebar.write("Document returned to OpenAI")
             st.sidebar.json(output)
-            print(output)
             rtn_value = output
 
         except Exception as exc:
@@ -117,8 +118,7 @@ def get_assistant() -> DatabotOpenAIAssistant:
     if "openai_assistant" not in st.session_state:
         assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
         assistant.create_assistant(name="Databot Assistant",
-                                   tools=['function', 'retrieval', 'code_interpreter'],
-                                   instructions="You help answer questions about the databot sensor device and can call function to retrieve values from the databot."
+                                   tools=['function', 'retrieval', 'code_interpreter']
                                    )
         st.session_state["openai_assistant"] = assistant
 
@@ -192,6 +192,7 @@ def files_in_directory(directory_path):
 
 def setup_sidebar():
     with st.sidebar:
+        st.header("DroneBlocks databot Chat Assistant")
         c1, c2, c3 = st.columns(3)
         with c1:
             upload_files_btn = st.button(label="Upload Files")
@@ -247,9 +248,6 @@ def handle_userinput(user_content: str):
     handle_userinput("Hello, how are you?")
     ```
     """
-    # user_chat_message = ChatMessage(role="user", content=user_content)
-    # st.session_state.chat_history.append(user_chat_message)
-    # show_chat_history()
 
     try:
         get_assistant().submit_user_prompt(user_content, wait_for_completion=True)
@@ -270,13 +268,13 @@ def handle_userinput(user_content: str):
 def main():
     st.set_page_config(page_title="Chat with a databot",
                        page_icon=":speech_balloon:",
-                       layout="centered",
+                       layout="wide",
                        initial_sidebar_state="expanded")
 
     setup_sidebar()
 
     with st.container():
-        st.title(":speech_balloon: Chat Databot")
+        st.title(":speech_balloon: DroneBlocks databot Assistant")
         st.caption("Chat with your databot. Powered by OpenAI and DroneBlocks")
         st.divider()
 
@@ -286,8 +284,6 @@ def main():
 
     user_question = st.chat_input("Ask databot:")
     if user_question:
-        # with st.spinner("Running conversation..."):
-        #     handle_userinput(user_question)
         handle_userinput(user_question)
 
 
