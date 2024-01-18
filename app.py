@@ -114,13 +114,23 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         st.sidebar.write(the_run.status)
 
 
-def get_assistant() -> DatabotOpenAIAssistant:
+def get_assistant(create_if_not_exist:bool = True) -> DatabotOpenAIAssistant | None:
     if "openai_assistant" not in st.session_state:
-        assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
-        assistant.create_assistant(name="Databot Assistant",
-                                   tools=['function', 'retrieval', 'code_interpreter']
-                                   )
-        st.session_state["openai_assistant"] = assistant
+        if create_if_not_exist:
+            assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
+
+            with files_in_directory('./databot_docs') as files:
+                for file_path in files:
+                    st.sidebar.write(file_path)
+                    assistant.add_file_to_assistant(file_path=file_path)
+
+            assistant.create_assistant(name="Databot Assistant",
+                                       tools=['function', 'retrieval', 'code_interpreter']
+                                       )
+
+            st.session_state["openai_assistant"] = assistant
+        else:
+            return None
 
     return st.session_state["openai_assistant"]
 
@@ -193,44 +203,20 @@ def files_in_directory(directory_path):
 def setup_sidebar():
     with st.sidebar:
         st.header("DroneBlocks databot Chat Assistant")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            upload_files_btn = st.button(label="Upload Files")
-        with c2:
-            delete_files_btn = st.button(label="Delete Files")
-        # with c3:
-        #     show_assistant_files = st.button(label="Show Assistant Files")
-        # with c4:
-        #     debug_btn = st.button(label="Debug")
-
-        with c3:
-            delete_assistant_btn = st.button(label="Delete Assistant")
-
-        if upload_files_btn:
-            st.write("Uploading")
-            # since we are uploading the entire directory - to keep things in sync
-            # first delete all files that are currently in openai
-            get_assistant().delete_files()
-
-            with files_in_directory('./databot_docs') as files:
-                for file_path in files:
-                    st.write(file_path)
-                    get_assistant().add_file_to_assistant(file_path=file_path)
-
-        if delete_files_btn:
-            st.write("Deleting files...")
-            get_assistant().delete_files()
-
-            files = get_assistant().get_assistant_files(refresh_from_openai=False)
-            if len(files) > 0:
-                st.warning("Some files were not deleted")
-            st.write("Deleting files...Done")
-
+        delete_assistant_btn = st.button(label="Delete Assistant")
 
         if delete_assistant_btn:
             st.write("Deleting Assistant...")
-            get_assistant().delete_assistant()
-            st.write("Deleting Assistant...Done")
+            assistant = get_assistant(create_if_not_exist=False)
+            if assistant is not None:
+                assistant.delete_assistant()
+                st.write("Deleting Assistant...Done")
+                del st.session_state["openai_assistant"]
+            else:
+                st.write("No Assistant found...")
+
+        st.divider()
+
 
 
 def handle_userinput(user_content: str):
