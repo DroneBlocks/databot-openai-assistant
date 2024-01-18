@@ -270,7 +270,8 @@ def main():
 
     user_question = st.chat_input("Ask databot:")
     if user_question:
-        handle_userinput(user_question)
+        with st.container(height=700):
+            handle_userinput(user_question)
 
 
 if __name__ == '__main__':
