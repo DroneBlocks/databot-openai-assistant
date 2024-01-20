@@ -1,7 +1,6 @@
 import json
 import logging
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Literal
 
@@ -91,16 +90,17 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         return system_content
 
     def handle_requires_action(self, tool_call, function_name: str, function_args: str) -> str:
-        rtn_value = None
+        rtn_value = ""
         try:
             args = json.loads(function_args)
             st.sidebar.write(f"Call function: {function_name}")
             st.sidebar.write(f"Arguments: {function_args}")
 
-            output = get_databot_values(args['sensor_names'])
-            st.sidebar.write("Document returned to OpenAI")
-            st.sidebar.json(output)
-            rtn_value = output
+            if function_name == "get_databot_values":
+                output = get_databot_values(args['sensor_names'])
+                st.sidebar.write("Document returned to OpenAI")
+                st.sidebar.json(output)
+                rtn_value = output
 
         except Exception as exc:
             logging.error(exc)
@@ -114,7 +114,13 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
         st.sidebar.write(the_run.status)
 
 
-def get_assistant(create_if_not_exist:bool = True) -> DatabotOpenAIAssistant | None:
+def get_assistant(create_if_not_exist: bool = True) -> DatabotOpenAIAssistant | None:
+    """
+    Get the Databot OpenAI Assistant.
+
+    :param create_if_not_exist: Flag to indicate whether to create a new assistant if it doesn't exist.
+    :return: The Databot OpenAI Assistant object if it exists, otherwise None.
+    """
     if "openai_assistant" not in st.session_state:
         if create_if_not_exist:
             assistant = DatabotOpenAIAssistant(log_level=logging.INFO)
@@ -135,12 +141,6 @@ def get_assistant(create_if_not_exist:bool = True) -> DatabotOpenAIAssistant | N
     return st.session_state["openai_assistant"]
 
 
-@dataclass
-class ChatMessage:
-    role: str
-    content: str
-
-
 def show_chat_history():
     for chat in st.session_state.chat_history:
         with st.chat_message(chat.get_role()):
@@ -148,6 +148,14 @@ def show_chat_history():
 
 
 def get_databot_values(sensor_names: List) -> str:
+    """
+    Get values for specified sensor names from the databot device.
+
+    :param sensor_names: List of sensor names to retrieve values for
+    :type sensor_names: List
+    :return: JSON string containing the sensor values
+    :rtype: str
+    """
     try:
         print(f"Get values for: {sensor_names}")
         url = "http://localhost:8321/"
@@ -164,9 +172,15 @@ def get_databot_friendly_names() -> List:
 
 
 def get_function_definition() -> FunctionDefinition:
+    """
+    Get the definition of the function `get_databot_values`.
+
+    :return: An instance of `FunctionDefinition` class.
+
+    """
     function_definition = FunctionDefinition(
         name="get_databot_values",
-        description="""Get sensor values from the databot.  If there are multiple sensor values, a list of sensor names can be provided.
+        description="""Get sensor values from the databot.  If there are multiple sensor values, a list of sensor names must be provided.
                         This function can only provide information on the current values from the databot.  
                         This function CANNOT describe what the sensor is measuring.
                         """,
@@ -185,6 +199,13 @@ def get_function_definition() -> FunctionDefinition:
 
 @contextmanager
 def files_in_directory(directory_path):
+    """
+    Get a list of files in a given directory.
+
+    :param directory_path: The path of the directory.
+    :return: A generator that yields a list of file names in the directory.
+             If an exception occurs or the directory doesn't exist, None is yielded.
+    """
     path = Path(directory_path)
     if path.is_dir():
         try:
@@ -218,7 +239,6 @@ def setup_sidebar():
         st.divider()
 
 
-
 def handle_userinput(user_content: str):
     """
     :param user_content: The content provided by the user as input.
@@ -244,7 +264,6 @@ def handle_userinput(user_content: str):
                 st.session_state.chat_history_ids.add(message.get_id())
 
         show_chat_history()
-
 
     except Exception as e:
         with st.chat_message("assistant"):
