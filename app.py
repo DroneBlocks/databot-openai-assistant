@@ -16,10 +16,8 @@ from openai_assistant import OpenAIAssistant, FunctionDefinition, FunctionParame
 
 
 class DatabotOpenAIAssistant(OpenAIAssistant):
-
-    def delete_assistant(self) -> AssistantDeleted:
-        super().delete_files()
-        return super().delete_assistant()
+    def __init__(self, api_key: str = None, log_level: int = logging.WARNING):
+        super().__init__(api_key=api_key, log_level=log_level)
 
     def _get_databot_friendly_names(self) -> List:
         df = pd.DataFrame(data=databot_sensors.values()).sort_values(by="friendly_name")
@@ -58,8 +56,9 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
 
         super().create_assistant(name, instructions, tools, model, include_files)
 
-    def __init__(self, api_key: str = None, log_level: int = logging.WARNING):
-        super().__init__(api_key=api_key, log_level=log_level)
+    def delete_assistant(self) -> AssistantDeleted:
+        super().delete_files()
+        return super().delete_assistant()
 
     def get_assistant_instructions(self) -> str:
         values = databot_sensors.values()
