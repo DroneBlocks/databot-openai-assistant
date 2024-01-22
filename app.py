@@ -35,8 +35,9 @@ class DatabotOpenAIAssistant(OpenAIAssistant):
                 FunctionParameter(
                     name="sensor_names",
                     description="""List of the friendly human readable sensor value names.""",
-                    type="string",
+                    type="array",
                     required=True,
+                    array_items_type="string",
                     enum_values=get_databot_friendly_names()
                 )
             ]
