@@ -1,9 +1,9 @@
-openai
+openai==1.10.0
 python-dotenv
-streamlit
+streamlit==1.30.0
 jupyter
 requests
 pandas
-databot-py
+databot-py==0.0.8
 bottle
 
